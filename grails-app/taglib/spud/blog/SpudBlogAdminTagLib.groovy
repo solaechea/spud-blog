@@ -3,15 +3,15 @@ package spud.blog
 class SpudBlogAdminTagLib {
 	def spudMultiSiteService
 	static defaultEncodeAs = 'raw'
-	static namespace = 'spAdmin'
+	static namespace = 'spAdmin2'
 
 	//TODO: Does this merit going into core
 	def availableSites = { attrs, body ->
         def sites = spudMultiSiteService.availableSites()
-		def activeSiteId = spudMultiSiteService.activeSite.siteId
+		def activeSiteId = spudMultiSiteService.activeSite?.siteId
 
-		sites.each { site ->
-			out << body(site: site, siteActive: site.siteId == activeSiteId)
+		sites?.each { site ->
+			out << body(site: site, siteActive: site?.siteId == activeSiteId)
 		}
 	}
 }

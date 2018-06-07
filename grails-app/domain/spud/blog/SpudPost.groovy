@@ -8,7 +8,7 @@ class SpudPost {
 	def grailsApplication
 
 	static transients = ['user', 'userDisplayName', 'cachedContent', 'render', 'postContent']
-	static hasMany = [sites: SpudPostSite]
+	static hasMany = [sites: SpudPostSite, categories: SpudPostCategory]
 
 	String title
 	String content
@@ -33,13 +33,16 @@ class SpudPost {
 
 	Map customFields
 
+	byte[] thumbnailImage
+	String thumbnailImageName
+	String thumbnailImageContentType
+
 	// Transients
 	String cachedContent
 
-
-    static mapping = {
+	static mapping = {
 		def cfg = it?.getBean('grailsApplication')?.config
-        datasource(cfg?.spud?.core?.datasource ?: 'DEFAULT')
+		datasource(cfg?.spud?.core?.datasource ?: 'DEFAULT')
 		cache true
 		table 'spud_posts'
 		autoTimestamp true
@@ -49,34 +52,38 @@ class SpudPost {
 		dateCreated column: 'created_at'
 		lastUpdated column: 'updated_at'
 		userId column: 'spud_user_id'
-		sites cascade: "all-delete-orphan" 
-    }
+		sites cascade: "all-delete-orphan"
+		categories joinTable: [name: "spud_post_categories_spud_posts", key: 'mm_post_id' ]
+	}
 
-    static constraints = {
-    	urlName nullable: false, unique: true
-    	content nullable: true
-    	contentProcessed nullable: true
-    	metaKeywords nullable: true
-    	metaDescription nullable: true
+	static constraints = {
+		urlName nullable: false, unique: true
+		content nullable: true
+		contentProcessed nullable: true
+		metaKeywords nullable: true
+		metaDescription nullable: true
 		metaImage nullable: true
-    	customFields nullable:true
-    }
+		customFields nullable:true
+		thumbnailImage nullable: true, blank: true, maxSize: 1024 * 1024 * 2 //2MB
+		thumbnailImageName nullable: true, blank: true
+		thumbnailImageContentType nullable: true, blank: true
+	}
 
-    String getUserDisplayName() {
-    	def name
-    	sharedSecurityService.withUser(userId) { user, account ->
-    		name = user.toString()
-    	}
-    	return name
-    }
+	String getUserDisplayName() {
+		def name
+		sharedSecurityService.withUser(userId) { user, account ->
+			name = user.toString()
+		}
+		return name
+	}
 
-    def getUser() {
-    	def output
-    	sharedSecurityService.withUser(userId) { user, account ->
-    		output = user
-    	}
-    	return output
-    }
+	def getUser() {
+		def output
+		sharedSecurityService.withUser(userId) { user, account ->
+			output = user
+		}
+		return output
+	}
 
 	public void setPostContent(String _content) {
 		content = _content
@@ -99,7 +106,7 @@ class SpudPost {
 		}
 	}
 
-    public String render() {
+	public String render() {
 		if(cachedContent) {
 			return cachedContent
 		}
@@ -110,41 +117,41 @@ class SpudPost {
 		this.render()
 	}
 
-    static publicNewsPosts = { where { isNews == true && visible == true && publishedAt <= new Date() } }
-    static publicBlogPosts = { where { isNews == false && visible == true && publishedAt <= new Date() } }
+	static publicNewsPosts = { where { isNews == true && visible == true && publishedAt <= new Date() } }
+	static publicBlogPosts = { where { isNews == false && visible == true && publishedAt <= new Date() } }
 
-    static namedQueries = {
-    	forSpudSite { currentSiteId ->
-    		eq('siteId', currentSiteId)
-    	}
+	static namedQueries = {
+		forSpudSite { currentSiteId ->
+			eq('siteId', currentSiteId)
+		}
 
-    	publicPosts {
-    		eq('visible', true)
-    		lte('publishedAt', new Date())
-    		order('publishedAt','desc')
-    	}
+		publicPosts {
+			eq('visible', true)
+			lte('publishedAt', new Date())
+			order('publishedAt','desc')
+		}
 
-    	recentPosts { limit ->
-    		publicPosts()
-    		maxResults(limit)
-    	}
+		recentPosts { limit ->
+			publicPosts()
+			maxResults(limit)
+		}
 
-    	recentNewsPosts { limit ->
-    		eq('isNews', false)
-    		recentPosts(limit)
+		recentNewsPosts { limit ->
+			eq('isNews', true)
+			recentPosts(limit)
 
-    	}
+		}
 
-    	recentBlogPosts { limit ->
-    		eq('isNews', true)
-    		recentPosts(limit)
-    	}
+		recentBlogPosts { limit ->
+			eq('isNews', false)
+			recentPosts(limit)
+		}
 
 
-    }
+	}
 
 	def grailsCacheAdminService
-	
+
 	def afterInsert() {
 		grailsCacheAdminService.clearAllCaches()
 	}

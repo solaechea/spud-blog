@@ -11,7 +11,8 @@ class SpudBlogService {
 	def grailsApplication
 
 	def generateUrlName(post) {
-		post.urlName = "${post?.publishedAt?.format("YYYY-MM-dd")}-${post?.title?.parameterize().toLowerCase()}"
+		//post.urlName = "${post?.publishedAt?.format("YYYY-MM-dd")}-${post?.title?.parameterize().toLowerCase()}"
+		post.urlName = "${post?.title?.parameterize().toLowerCase()}"
 	}
 
 

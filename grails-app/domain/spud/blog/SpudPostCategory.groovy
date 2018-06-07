@@ -5,12 +5,14 @@ class SpudPostCategory {
 	String urlName
 	SpudPostCategory parent
 
-    //TODO: ADD JOIN TABLE TO SpudPost
-	
+    static belongsTo = SpudPost
+    static hasMany = [posts: SpudPost]
+
 	static mapping = {
 		def cfg = it?.getBean('grailsApplication')?.config
 		datasource(cfg?.spud?.core?.datasource ?: 'DEFAULT')
 		table 'spud_post_categories'
+        posts joinTable: [name: "spud_post_categories_spud_posts", key: 'mm_category_id' ]
 	}
 
 	static constraints = {
@@ -20,7 +22,7 @@ class SpudPostCategory {
 	}
 
 	def grailsCacheAdminService
-	
+
 	def afterInsert() {
 		grailsCacheAdminService.clearAllCaches()
 	}
