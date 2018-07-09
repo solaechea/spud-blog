@@ -14,7 +14,6 @@ class SpudBlogUrlMappings {
 			def BLOG_MAPPING = "/${blogMapping}"
 			invokeMethod(BLOG_MAPPING + ".${format}",[resources: 'blog'])
 			invokeMethod(BLOG_MAPPING,[resources: 'blog'])
-			"/blog/latestPost"(controller: 'blog', action: 'latestPost')
 	        "/spud/admin/blog-posts"(resources: 'blogPosts', namespace: 'spud_admin')
 		}
 		if(newsEnabled) {
