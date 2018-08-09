@@ -1,10 +1,13 @@
 package spud.blog
 
 import grails.converters.*
+import groovy.time.TimeCategory
+import org.codehaus.groovy.grails.web.mapping.LinkGenerator
 
 class BlogController {
 	def grailsApplication
 	def spudMultiSiteService
+	LinkGenerator grailsLinkGenerator
 	static responseFormats = ['html','rss','atom']
 
     def index() {
@@ -139,5 +142,24 @@ class BlogController {
 
 
     }
+
+	def latestPost(){
+		def yesterday
+		use (TimeCategory) {
+			yesterday = new Date() - params.int('hours')?.hours
+		}
+		def post = SpudPost.find("from SpudPost p WHERE p.isNews = :isNews and p.publishedAt > :yesterday and p.publishedAt < :now ORDER BY publishedAt desc",[isNews: false,yesterday: yesterday, now:new Date() ])
+		def jsonData = [:]
+		if (post){
+			jsonData.'thumbnailImage'= post.thumbnailImage?.encodeBase64().toString()
+			jsonData.'thumbnailImageName' = post?.thumbnailImageName
+			jsonData.'thumbnailImageContentType' = post?.thumbnailImageContentType
+			jsonData.'title' = post?.title
+			jsonData.'urlName' = grailsLinkGenerator.link(resource:"blog", action:"show", id:"${post?.urlName}", absolute: true)
+			jsonData.'content' = post.content
+			jsonData.'publishedAt'= post.publishedAt
+		}
+		render text: jsonData as JSON, contentType: 'application/json', status: 200
+	}
 
 }
