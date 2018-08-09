@@ -4,18 +4,17 @@ import grails.converters.*
 class SpudBlogBootStrap {
 	def init = { servletContext ->
 		JSON.registerObjectMarshaller(SpudPost) {
-			def output = [:]
-			output.id              = it.id
-			output.title           = it.title
-			output.urlName         = it.urlName
-			output.content         = it.render()
-			output.publishedAt     = it.publishedAt
-			output.dateCreated     = it.dateCreated
-			output.lastUpdated     = it.lastUpdated
-			output.userId          = it.userId
-			output.userDisplayName = it.userDisplayName
-
-			return output;
+			[
+				id              : it.id,
+				title           : it.title,
+				urlName         : it.urlName,
+				content         : it.render(),
+				publishedAt     : it.publishedAt,
+				dateCreated     : it.dateCreated,
+				lastUpdated     : it.lastUpdated,
+				userId          : it.userId,
+				userDisplayName : it.userDisplayName
+			]
 		}
 	}
 

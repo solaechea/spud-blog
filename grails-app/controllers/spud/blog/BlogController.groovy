@@ -142,7 +142,7 @@ class BlogController {
 
 
     }
-	
+
 	def latestPost(){
 		def yesterday
 		use (TimeCategory) {
@@ -153,6 +153,7 @@ class BlogController {
 		if (post){
 			jsonData.'thumbnailImage'= post.thumbnailImage?.encodeBase64().toString()
 			jsonData.'thumbnailImageName' = post?.thumbnailImageName
+			jsonData.'thumbnailImageContentType' = post?.thumbnailImageContentType
 			jsonData.'title' = post?.title
 			jsonData.'urlName' = grailsLinkGenerator.link(resource:"blog", action:"show", id:"${post?.urlName}", absolute: true)
 			jsonData.'content' = post.content
