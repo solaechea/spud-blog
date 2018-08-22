@@ -12,25 +12,46 @@ class BlogController {
 
     def index() {
     	def postsPerPage = grailsApplication.config.spud.blog.postsPerPage ?: 25
+		int offset = params.int("offset", 0)
     	def layout = grailsApplication.config.spud.blog.blogLayout ?: 'main'
 		def siteId = params.int('siteId') ?: request.getAttribute('spudSiteId')
 		def today  = new Date()
+    	String query = params.q?:""
+    	query = query.trim().toLowerCase()
 		def postQuery
 		def postCount
+
 		if(siteId == 0) {
-			postCount = SpudPost.executeQuery("select count(p) from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today AND ( NOT EXISTS ( FROM SpudPostSite s WHERE s.post = p) OR EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId))",[siteId: siteId, today: today])[0]
-			postQuery = "from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today AND ( NOT EXISTS ( FROM SpudPostSite s WHERE s.post = p) OR EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId)) ORDER BY publishedAt desc"
+			postCount = SpudPost.executeQuery("select count(p) from SpudPost p WHERE p.isNews = false AND visible=true \
+				AND publishedAt <= :today AND (lower(p.title) like :q OR lower(p.metaDescription) like :q) \
+				AND ( NOT EXISTS ( FROM SpudPostSite s WHERE s.post = p) OR EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId))",
+				[siteId: siteId, today: today, q: "%${query}%"])[0]
+
+			postQuery = "from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today \
+				AND (lower(p.title) like :q OR lower(p.metaDescription) like :q) \
+				AND ( NOT EXISTS ( FROM SpudPostSite s WHERE s.post = p) OR EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId)) \
+				ORDER BY publishedAt desc"
+
 		} else {
-			postCount = SpudPost.executeQuery("select count(p) from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today AND EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId)",[ siteId: siteId, today: today])[0]
-			postQuery = "from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today AND EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId) ORDER BY publishedAt desc"
+			postCount = SpudPost.executeQuery("select count(p) from SpudPost p WHERE p.isNews = false AND visible=true \
+				AND publishedAt <= :today AND (lower(p.title) like :q OR lower(p.metaDescription) like :q) \
+				AND EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId)",
+				[siteId: siteId, today: today, q: "%${query}%"])[0]
+
+			postQuery = "from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today \
+				AND (lower(p.title) like :q OR lower(p.metaDescription) like :q) \
+				AND EXISTS ( FROM SpudPostSite s Where s.post = p AND s.spudSiteId = :siteId) \
+				ORDER BY publishedAt desc"
 
 		}
 		withFormat {
 			html {
-				def posts = SpudPost.findAll(postQuery,[siteId:siteId, today:today], [max:postsPerPage] + params)
+				def posts = SpudPost.findAll(postQuery,[siteId:siteId, today:today, q: "%${query}%"], [max:postsPerPage] + params)
 				def recentPosts = SpudPost.executeQuery("SELECT new map(p.id as id, p.title as title, p.urlName as urlName) FROM SpudPost p WHERE p.isNews = false \
 					AND visible=true AND publishedAt <= :today ORDER BY publishedAt desc", [today:today], [max: 5])
-				render view: '/blog/index', model: [posts: posts, postCount: postCount, layout: layout, recentPosts: recentPosts]
+
+				render view: '/blog/index', model: [posts: posts, postCount: postCount, layout: layout,
+					recentPosts: recentPosts, offset: offset, max: postsPerPage, q: params.q]
 			}
 			rss {
 				render(feedType:"rss", feedVersion:"2.0") {
@@ -66,37 +87,14 @@ class BlogController {
 			}
 			json {
 				def posts = SpudPost.findAll(postQuery,[siteId:siteId, today:today], [max:postsPerPage] + params)
-				render([posts: posts, postCount: postCount] as JSON)
+				render([posts: posts, postCount: postCount, offset: offset, max: postsPerPage, q: params.q] as JSON)
 			}
 			xml {
 				def posts = SpudPost.findAll(postQuery,[siteId:siteId, today:today], [max:postsPerPage] + params)
-				render([posts: posts, postCount: postCount] as XML)
+				render([posts: posts, postCount: postCount, offset: offset, max: postsPerPage, q: params.q] as XML)
 			}
-
 		}
     }
-
-    def search() {
-    	def postsPerPage = grailsApplication.config.spud.blog.postsPerPage ?: 25
-    	def layout = grailsApplication.config.spud.blog.blogLayout ?: 'main'
-    	Date today = new Date()
-    	String query = params.q?:""
-    	query = query.trim().toLowerCase()
-
-		def postCount = SpudPost.executeQuery("select count(p) from SpudPost p WHERE p.isNews = false \
-			AND visible=true AND publishedAt <= :today AND (lower(p.title) like :q \
-			OR lower(p.metaDescription) like :q)",[today: today, q: "%${query}%"])[0]
-		def postQuery = "from SpudPost p WHERE p.isNews = false AND visible=true AND publishedAt <= :today \
-			AND (lower(p.metaDescription) like :q OR lower(p.title) like :q) \
-			ORDER BY publishedAt desc"
-
-		def recentPosts = SpudPost.executeQuery("SELECT new map(p.id as id, p.title as title, p.urlName as urlName) FROM SpudPost p WHERE p.isNews = false \
-			AND visible=true AND publishedAt <= :today ORDER BY publishedAt desc", [today:today], [max: 5])
-
-		def posts = SpudPost.findAll(postQuery, [today: today, q: "%${query}%"], [max:postsPerPage] + params)
-		render view: '/blog/index', model: [posts: posts, postCount: postCount, layout: layout, q: params.q, recentPosts: recentPosts]
-    }
-
 
     def show() {
     	def post = SpudPost.where { isNews == false && visible == true && publishedAt <= new Date() && urlName == params.id}.find()
@@ -139,8 +137,6 @@ class BlogController {
 				render post as XML
 			}
 		}
-
-
     }
 
 	def latestPost(){
@@ -148,6 +144,7 @@ class BlogController {
 		use (TimeCategory) {
 			yesterday = new Date() - params.int('hours')?.hours
 		}
+		log.debug "latestPost since date: ${yesterday}"
 		def post = SpudPost.find("from SpudPost p WHERE p.isNews = :isNews and p.publishedAt > :yesterday and p.publishedAt < :now ORDER BY publishedAt desc",[isNews: false,yesterday: yesterday, now:new Date() ])
 		def jsonData = [:]
 		if (post){
@@ -161,5 +158,4 @@ class BlogController {
 		}
 		render text: jsonData as JSON, contentType: 'application/json', status: 200
 	}
-
 }
